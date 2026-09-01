@@ -15,11 +15,25 @@ module "node1" {
   ami                    = data.aws_ami.my_ami.id
   instance_type          = "t3.micro"
   subnet_id              = module.my_vpc.public_subnets[0]
+  private_ip             = "10.0.0.5"
   create_security_group  = false
-  vpc_security_group_ids = [module.my_sg.id]
+  vpc_security_group_ids = [module.public_sg.id]
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "webserver" }
-  root_block_device = { size = 16 }
+  root_block_device      = { size = 16 }
+}
+
+resource "aws_eip" "node1_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "node1-public-ip"
+  }
+}
+
+resource "aws_eip_association" "node1_eip_assoc" {
+  instance_id   = module.node1.id
+  allocation_id = aws_eip.node1_eip.id
 }
 
 module "node2" {
@@ -29,11 +43,12 @@ module "node2" {
   ami                    = data.aws_ami.my_ami.id
   instance_type          = "t3.micro"
   subnet_id              = module.my_vpc.private_subnets[0]
+  private_ip             = "10.0.1.135"
   create_security_group  = false
-  vpc_security_group_ids = [module.my_sg.id]
+  vpc_security_group_ids = [module.private_sg.id]
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "ansible-controller" }
-  root_block_device = { size = 16 }
+  root_block_device      = { size = 16 }
 }
 
 
@@ -44,9 +59,10 @@ module "node3" {
   ami                    = data.aws_ami.my_ami.id
   instance_type          = "t3.micro"
   subnet_id              = module.my_vpc.private_subnets[0]
+  private_ip             = "10.0.1.136"
   create_security_group  = false
-  vpc_security_group_ids = [module.my_sg.id]
+  vpc_security_group_ids = [module.private_sg.id]
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "monitoring-server" }
-  root_block_device = { size = 16 }
+  root_block_device      = { size = 16 }
 }
