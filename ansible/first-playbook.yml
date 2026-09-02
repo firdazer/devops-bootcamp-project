@@ -1,0 +1,45 @@
+---
+- name: "Bootstrap webserver (node1)"
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Deploy welcome page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <h1>Hello from {{ ansible_hostname }} ({{ ansible_default_ipv4.address }})</h1>
+          <p>Managed by Ansible from {{ inventory_hostname }}.</p>
+        mode: "0644"
+      notify: reload nginx
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+- name: "Verify monitoring node (node3)"
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Install Prometheus node exporter
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+        update_cache: true
+
+    - name: Show OS facts
+      ansible.builtin.debug:
+        msg: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_release'] }}"
