@@ -1,0 +1,25 @@
+---
+- name: "Install Docker on controller (node2)"
+  hosts: controller
+  become: true
+
+  pre_tasks:
+    - name: Remove old Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose
+          - docker-compose-v2
+          - podman
+          - runc
+        state: absent
+
+  roles:
+    - role: geerlingguy.pip
+      vars:
+        pip_install_packages:
+          - name: docker
+    - role: geerlingguy.docker
+      vars:
+        docker_users:
+          - ubuntu

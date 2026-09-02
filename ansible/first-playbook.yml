@@ -43,3 +43,116 @@
     - name: Show OS facts
       ansible.builtin.debug:
         msg: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_release'] }}"
+
+- name: "Bootstrap controller (node2) - Docker & GitHub Runner"
+  hosts: controller
+  become: true
+  vars:
+    runner_name: "node2-runner"
+    github_repo: ""
+    runner_token: ""
+    runner_dir: /opt/github-runner
+    runner_labels: "self-hosted,linux,x64,ansible,terraform"
+
+  collections:
+    - name: community.docker
+      version: ">=3.0.0,<4.0.0"
+
+  pre_tasks:
+    - name: Remove old Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose
+          - docker-compose-v2
+          - podman
+          - runc
+        state: absent
+
+  roles:
+    - role: geerlingguy.pip
+      vars:
+        pip_install_packages:
+          - name: docker
+    - role: geerlingguy.docker
+      vars:
+        docker_users:
+          - ubuntu
+
+  tasks:
+    # ── GitHub Actions Runner ──
+    - name: Install git
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: true
+
+    - name: Create runner directory
+      ansible.builtin.file:
+        path: "{{ runner_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create .ssh directory for deployment keys
+      ansible.builtin.file:
+        path: /home/ubuntu/.ssh
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0700"
+
+    - name: Copy SSH private key for Node 1/3 access
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../terraform/aws/Firdazer-keypair.pem"
+        dest: /home/ubuntu/.ssh/Firdazer-keypair.pem
+        owner: ubuntu
+        group: ubuntu
+        mode: "0400"
+
+    - name: Create docker-compose.yml for GitHub Actions runner
+      ansible.builtin.copy:
+        dest: "{{ runner_dir }}/docker-compose.yml"
+        mode: "0644"
+        content: |
+          services:
+            github-runner:
+              image: myoung34/github-runner:latest
+              container_name: {{ runner_name }}
+              restart: always
+              environment:
+                - RUNNER_NAME={{ runner_name }}
+                - REPO_URL=https://github.com/{{ github_repo }}
+                - RUNNER_TOKEN={{ runner_token }}
+                - RUNNER_LABELS={{ runner_labels }}
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock
+                - /home/ubuntu/.ssh:/home/runner/.ssh:ro
+              network_mode: host
+
+    - name: Fail if github_repo is not set
+      ansible.builtin.fail:
+        msg: "Set 'github_repo' variable to your GitHub repo (e.g. username/repo)"
+      when: github_repo | length == 0
+
+    - name: Fail if runner_token is not set
+      ansible.builtin.fail:
+        msg: "Set 'runner_token' variable to your GitHub runner registration token"
+      when: runner_token | length == 0
+
+    - name: Pull runner image and start container
+      community.docker.docker_compose_v2:
+        project_src: "{{ runner_dir }}"
+        state: present
+
+    - name: Wait for runner to register
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: Verify runner container is running
+      community.docker.docker_container_info:
+        name: "{{ runner_name }}"
+      register: runner_status
+
+    - name: Show runner status
+      ansible.builtin.debug:
+        msg: "Runner '{{ runner_name }}' is {{ 'running' if runner_status.exists else 'NOT running' }}"
