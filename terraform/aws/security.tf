@@ -29,6 +29,12 @@ module "public_sg" {
       from_port   = 22
       to_port     = 22
     }
+    node_exporter = {
+      cidr_ipv4   = "10.0.0.0/16"
+      ip_protocol = "tcp"
+      from_port   = 9100
+      to_port     = 9100
+    }
   }
 
   egress_rules = {
@@ -70,6 +76,12 @@ module "private_sg" {
       ip_protocol = "tcp"
       from_port   = 9100
       to_port     = 9100
+    }
+    grafana = {
+      cidr_ipv4   = module.my_vpc.vpc_cidr_block
+      ip_protocol = "tcp"
+      from_port   = 3000
+      to_port     = 3000
     }
   }
 

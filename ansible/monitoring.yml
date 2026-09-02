@@ -1,0 +1,183 @@
+---
+# ── Play 1: Install node_exporter on node1 (webserver) ──
+- name: "Install node_exporter on node1"
+  hosts: webservers
+  become: true
+
+  tasks:
+    - name: Install prometheus-node-exporter
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+        update_cache: true
+
+    - name: Ensure node_exporter is running
+      ansible.builtin.service:
+        name: prometheus-node-exporter
+        state: started
+        enabled: true
+
+    - name: Verify node_exporter is listening on :9100
+      ansible.builtin.wait_for:
+        host: 0.0.0.0
+        port: 9100
+        timeout: 10
+
+# ── Play 2: Install Docker + monitoring stack on node3 ──
+- name: "Deploy Prometheus and Grafana on node3"
+  hosts: monitoring
+  become: true
+
+  vars:
+    prometheus_dir: /opt/prometheus
+    grafana_dir: /opt/grafana
+    prometheus_port: 9090
+    grafana_port: 3000
+    node1_ip: "10.0.0.5"
+    node3_ip: "10.0.1.136"
+
+  pre_tasks:
+    - name: Remove old Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose
+          - docker-compose-v2
+          - podman
+          - runc
+        state: absent
+
+  roles:
+    - role: geerlingguy.docker
+      vars:
+        docker_users:
+          - ubuntu
+
+  tasks:
+    - name: Install python3-docker
+      ansible.builtin.apt:
+        name: python3-docker
+        state: present
+        update_cache: true
+
+    # ── Prometheus ──
+    - name: Create Prometheus directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ prometheus_dir }}"
+
+    - name: Create Prometheus data directory with correct ownership
+      ansible.builtin.file:
+        path: "{{ prometheus_dir }}/data"
+        state: directory
+        owner: "65534"
+        group: "65534"
+        mode: "0755"
+
+    - name: Deploy prometheus.yml
+      ansible.builtin.copy:
+        dest: "{{ prometheus_dir }}/prometheus.yml"
+        mode: "0644"
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: "node1"
+              static_configs:
+                - targets: ["{{ node1_ip }}:9100"]
+                  labels:
+                    instance: "node1-webserver"
+
+            - job_name: "node3"
+              static_configs:
+                - targets: ["{{ node3_ip }}:9100"]
+                  labels:
+                    instance: "node3-monitoring"
+
+    - name: Stop and remove old Prometheus container
+      community.docker.docker_container:
+        name: prometheus
+        state: absent
+
+    - name: Run Prometheus container
+      community.docker.docker_container:
+        name: prometheus
+        image: prom/prometheus:latest
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ prometheus_port }}:9090"
+        volumes:
+          - "{{ prometheus_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+          - "{{ prometheus_dir }}/data:/prometheus"
+        command:
+          - "--config.file=/etc/prometheus/prometheus.yml"
+          - "--storage.tsdb.path=/prometheus"
+          - "--storage.tsdb.retention.time=30d"
+          - "--web.enable-lifecycle"
+
+    # ── Grafana ──
+    - name: Create Grafana directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0777"
+      loop:
+        - "{{ grafana_dir }}"
+        - "{{ grafana_dir }}/provisioning/datasources"
+
+    - name: Deploy Grafana Prometheus datasource
+      ansible.builtin.copy:
+        dest: "{{ grafana_dir }}/provisioning/datasources/prometheus.yml"
+        mode: "0644"
+        content: |
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              access: proxy
+              url: http://prometheus:9090
+              isDefault: true
+              editable: true
+
+    - name: Stop and remove old Grafana container
+      community.docker.docker_container:
+        name: grafana
+        state: absent
+
+    - name: Run Grafana container
+      community.docker.docker_container:
+        name: grafana
+        image: grafana/grafana:latest
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ grafana_port }}:3000"
+        volumes:
+          - "{{ grafana_dir }}:/var/lib/grafana"
+          - "{{ grafana_dir }}/provisioning:/etc/grafana/provisioning:ro"
+        env:
+          GF_SECURITY_ADMIN_USER: admin
+          GF_SECURITY_ADMIN_PASSWORD: admin
+
+    # ── Verify ──
+    - name: Verify Prometheus is running
+      community.docker.docker_container_info:
+        name: prometheus
+      register: prom_status
+
+    - name: Verify Grafana is running
+      community.docker.docker_container_info:
+        name: grafana
+      register: grafana_status
+
+    - name: Show monitoring stack status
+      ansible.builtin.debug:
+        msg: >
+          Prometheus: {{ 'running' if prom_status.exists else 'NOT running' }} |
+          Grafana: {{ 'running' if grafana_status.exists else 'NOT running' }}
