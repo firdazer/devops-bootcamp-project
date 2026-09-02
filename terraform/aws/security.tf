@@ -23,6 +23,12 @@ module "public_sg" {
       from_port   = 80
       to_port     = 80
     }
+    vpc_ssh = {
+      cidr_ipv4   = "10.0.0.0/16"
+      ip_protocol = "tcp"
+      from_port   = 22
+      to_port     = 22
+    }
   }
 
   egress_rules = {

@@ -18,6 +18,7 @@ module "node1" {
   private_ip             = "10.0.0.5"
   create_security_group  = false
   vpc_security_group_ids = [module.public_sg.id]
+  iam_instance_profile   = "EC2-Devops"
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "webserver" }
   root_block_device      = { size = 16 }
@@ -46,6 +47,7 @@ module "node2" {
   private_ip             = "10.0.1.135"
   create_security_group  = false
   vpc_security_group_ids = [module.private_sg.id]
+  iam_instance_profile   = "EC2-Devops"
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "ansible-controller" }
   root_block_device      = { size = 16 }
@@ -62,6 +64,7 @@ module "node3" {
   private_ip             = "10.0.1.136"
   create_security_group  = false
   vpc_security_group_ids = [module.private_sg.id]
+  iam_instance_profile   = "EC2-Devops"
   key_name               = "Firdazer-keypair"
   tags                   = { Name = "monitoring-server" }
   root_block_device      = { size = 16 }
