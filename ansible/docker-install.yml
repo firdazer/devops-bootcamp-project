@@ -1,7 +1,18 @@
 ---
-- name: "Install Docker on controller (node2)"
-  hosts: controller
+- name: "Install Docker on node1 and deploy app from ECR on port 80"
+  hosts: webservers
   become: true
+
+  vars:
+    container_name: myapp
+    container_port: 80
+    host_port: 80
+    ecr_registry: "218485539818.dkr.ecr.ap-southeast-1.amazonaws.com"
+    ecr_repository: "devops-bootcamp-project/app"
+    ecr_region: "ap-southeast-1"
+    image_tag: "latest"
+    aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+    aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
 
   pre_tasks:
     - name: Remove old Docker packages
@@ -15,11 +26,115 @@
         state: absent
 
   roles:
-    - role: geerlingguy.pip
-      vars:
-        pip_install_packages:
-          - name: docker
     - role: geerlingguy.docker
       vars:
         docker_users:
           - ubuntu
+
+  tasks:
+    - name: Install python3-docker and unzip for AWS CLI
+      ansible.builtin.apt:
+        name:
+          - python3-docker
+          - unzip
+          - curl
+        state: present
+        update_cache: true
+
+    - name: Check if AWS CLI v2 is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/aws
+      register: aws_cli_check
+
+    - name: Download AWS CLI v2
+      ansible.builtin.get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /tmp/awscliv2.zip
+        mode: "0644"
+      when: not aws_cli_check.stat.exists
+
+    - name: Install AWS CLI v2
+      ansible.builtin.shell: |
+        cd /tmp && unzip -o awscliv2.zip && ./aws/install --update
+      when: not aws_cli_check.stat.exists
+      args:
+        creates: /usr/local/bin/aws
+
+    - name: Create .aws directory
+      ansible.builtin.file:
+        path: /home/ubuntu/.aws
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0700"
+
+    - name: Configure AWS credentials
+      ansible.builtin.copy:
+        dest: /home/ubuntu/.aws/credentials
+        content: |
+          [default]
+          aws_access_key_id = {{ aws_access_key }}
+          aws_secret_access_key = {{ aws_secret_key }}
+          region = {{ ecr_region }}
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Get ECR login token and authenticate Docker
+      ansible.builtin.shell: |
+        AWS_SHARED_CREDENTIALS_FILE=/home/ubuntu/.aws/credentials \
+        aws ecr get-login-password --region {{ ecr_region }} | \
+        docker login --username AWS --password-stdin {{ ecr_registry }}
+      register: ecr_login
+      changed_when: "'Login Succeeded' in ecr_login.stdout"
+
+    - name: Show ECR login result
+      ansible.builtin.debug:
+        msg: "{{ ecr_login.stdout }}"
+
+    - name: Remove existing container if present
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+
+    - name: Stop nginx to free port 80
+      ansible.builtin.service:
+        name: nginx
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Pull image from ECR
+      community.docker.docker_image:
+        name: "{{ ecr_registry }}/{{ ecr_repository }}"
+        tag: "{{ image_tag }}"
+        source: pull
+        force_source: true
+        state: present
+
+    - name: Tag image for local use
+      community.docker.docker_image:
+        name: "{{ ecr_registry }}/{{ ecr_repository }}:{{ image_tag }}"
+        repository: "{{ container_name }}"
+        tag: latest
+        source: local
+        force_tag: true
+        state: present
+
+    - name: Run container on port {{ host_port }}
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ container_name }}:latest"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ host_port }}:{{ container_port }}"
+
+    - name: Verify container is running
+      community.docker.docker_container_info:
+        name: "{{ container_name }}"
+      register: app_status
+
+    - name: Show container status
+      ansible.builtin.debug:
+        msg: "Container '{{ container_name }}' is {{ 'running' if app_status.exists else 'NOT running' }}"
