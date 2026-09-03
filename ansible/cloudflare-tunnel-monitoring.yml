@@ -34,6 +34,7 @@
         image: cloudflare/cloudflared:latest
         state: started
         restart_policy: unless-stopped
+        network_mode: host
         image_name_mismatch: recreate
         recreate: true
         command:
