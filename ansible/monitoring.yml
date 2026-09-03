@@ -60,6 +60,13 @@
         state: present
         update_cache: true
 
+    # ── Shared Docker network for Prometheus <-> Grafana ──
+    - name: Create shared monitoring Docker network
+      community.docker.docker_network:
+        name: monitoring-net
+        state: present
+        driver: bridge
+
     # ── Prometheus ──
     - name: Create Prometheus directories
       ansible.builtin.file:
@@ -110,6 +117,8 @@
         image: prom/prometheus:latest
         state: started
         restart_policy: unless-stopped
+        networks:
+          - name: monitoring-net
         ports:
           - "{{ prometheus_port }}:9090"
         volumes:
@@ -130,6 +139,8 @@
       loop:
         - "{{ grafana_dir }}"
         - "{{ grafana_dir }}/provisioning/datasources"
+        - "{{ grafana_dir }}/provisioning/dashboards"
+        - "{{ grafana_dir }}/dashboards"
 
     - name: Deploy Grafana Prometheus datasource
       ansible.builtin.copy:
@@ -138,12 +149,35 @@
         content: |
           apiVersion: 1
           datasources:
-            - name: Prometheus
+            - name: Prometheus-main
+              uid: prometheus-main
               type: prometheus
               access: proxy
               url: http://prometheus:9090
               isDefault: true
               editable: true
+
+    - name: Deploy Grafana dashboard provisioning config
+      ansible.builtin.copy:
+        dest: "{{ grafana_dir }}/provisioning/dashboards/dashboards.yml"
+        mode: "0644"
+        content: |
+          apiVersion: 1
+          providers:
+            - name: "Node Exporter"
+              orgId: 1
+              folder: ""
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards
+
+    - name: Deploy Node Exporter dashboard
+      ansible.builtin.copy:
+        src: "grafana-dashboards/nodes.json"
+        dest: "{{ grafana_dir }}/dashboards/nodes.json"
+        mode: "0644"
 
     - name: Stop and remove old Grafana container
       community.docker.docker_container:
@@ -156,6 +190,8 @@
         image: grafana/grafana:latest
         state: started
         restart_policy: unless-stopped
+        networks:
+          - name: monitoring-net
         ports:
           - "{{ grafana_port }}:3000"
         volumes:
@@ -164,6 +200,7 @@
         env:
           GF_SECURITY_ADMIN_USER: admin
           GF_SECURITY_ADMIN_PASSWORD: admin
+          GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/nodes.json
 
     # ── Verify ──
     - name: Verify Prometheus is running
@@ -181,3 +218,18 @@
         msg: >
           Prometheus: {{ 'running' if prom_status.exists else 'NOT running' }} |
           Grafana: {{ 'running' if grafana_status.exists else 'NOT running' }}
+
+    - name: Verify containers are on the shared monitoring network
+      ansible.builtin.shell: >-
+        docker inspect --format '{{ "{{" }}.Name}} -> {{ "{{" }}range $k, $v := .NetworkSettings.Networks{{ "}}" }}{{ "{{" }}$k}} {{ "{{" }}end{{ "}}" }}'
+        {{ item }}
+      register: net_status
+      changed_when: false
+      loop:
+        - prometheus
+        - grafana
+
+    - name: Show network membership
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      loop: "{{ net_status.results }}"
