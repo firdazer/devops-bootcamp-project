@@ -1,0 +1,53 @@
+---
+- name: "Deploy Cloudflare Tunnel on node3 (monitoring server)"
+  hosts: monitoring
+  become: true
+  # Public hostname (set in Cloudflare Zero Trust dashboard):
+  #   monitoringserver.artdevops.com -> http://localhost:3000 (Grafana)
+
+  vars:
+    cloudflared_dir: /opt/cloudflared
+    cloudflare_tunnel_token: "{{ lookup('env', 'CLOUDFLARE_MONITORING_TUNNEL_TOKEN') }}"
+
+  tasks:
+    - name: Fail if tunnel token is not provided
+      ansible.builtin.fail:
+        msg: >-
+          Set CLOUDFLARE_MONITORING_TUNNEL_TOKEN environment variable (or pass
+          cloudflare_tunnel_token) to the Cloudflare tunnel token for node3.
+      when: cloudflare_tunnel_token | length == 0
+
+    - name: Create cloudflared directory
+      ansible.builtin.file:
+        path: "{{ cloudflared_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Stop and remove old cloudflared container
+      community.docker.docker_container:
+        name: cloudflared
+        state: absent
+
+    - name: Run cloudflared tunnel container (token-based)
+      community.docker.docker_container:
+        name: cloudflared
+        image: cloudflare/cloudflared:latest
+        state: started
+        restart_policy: unless-stopped
+        image_name_mismatch: recreate
+        recreate: true
+        command:
+          - "tunnel"
+          - "--no-autoupdate"
+          - "run"
+          - "--token"
+          - "{{ cloudflare_tunnel_token }}"
+
+    - name: Verify cloudflared container is running
+      community.docker.docker_container_info:
+        name: cloudflared
+      register: tunnel_status
+
+    - name: Show cloudflared status
+      ansible.builtin.debug:
+        msg: "cloudflared is {{ 'running' if tunnel_status.exists else 'NOT running' }}"
