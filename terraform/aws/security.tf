@@ -17,12 +17,6 @@ module "public_sg" {
       from_port   = 22
       to_port     = 22
     }
-    http = {
-      cidr_ipv4   = "0.0.0.0/0"
-      ip_protocol = "tcp"
-      from_port   = 80
-      to_port     = 80
-    }
     vpc_ssh = {
       cidr_ipv4   = "10.0.0.0/16"
       ip_protocol = "tcp"
