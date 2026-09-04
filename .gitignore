@@ -6,3 +6,7 @@
 *.pem
 .terraform/
 **/tfplan
+
+# Node
+node_modules/
+dist/

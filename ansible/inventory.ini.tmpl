@@ -1,0 +1,13 @@
+[webservers]
+node1 ansible_host=<EIP>
+
+[monitoring]
+node3 ansible_host=10.0.1.136 ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i /home/firdazer/devops-bootcamp-project/terraform/aws/Firdazer-keypair.pem ubuntu@<EIP>"'
+
+[controller]
+node2 ansible_host=10.0.1.135 ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i /home/firdazer/devops-bootcamp-project/terraform/aws/Firdazer-keypair.pem ubuntu@<EIP>"'
+
+[all:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=/home/firdazer/devops-bootcamp-project/terraform/aws/Firdazer-keypair.pem
+ansible_python_interpreter=/usr/bin/python3

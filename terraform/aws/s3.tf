@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "project_bucket" {
-  bucket = "devops-bootcamp-project-firdazer"
+  bucket         = "devops-bootcamp-project-firdazer"
+  force_destroy = true
 
   tags = {
     Name = "devops-bootcamp-project"

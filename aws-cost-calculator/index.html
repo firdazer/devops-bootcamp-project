@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWS Cost Calculator — Estimate Your EC2, S3, EBS & RDS Spend</title>
+  <meta name="description" content="Free AWS cost calculator. Estimate monthly EC2, S3, EBS, RDS and data transfer costs in seconds. No signup required." />
+  <meta name="keywords" content="aws cost calculator, aws pricing calculator, ec2 cost, s3 pricing, rds cost, aws monthly cost" />
+  <meta property="og:title" content="AWS Cost Calculator" />
+  <meta property="og:description" content="Estimate your AWS monthly costs instantly." />
+  <meta property="og:type" content="website" />
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="logo">
+          <span class="logo-mark">A</span>
+          <span class="logo-text">AWS <strong>Cost</strong> Calculator</span>
+        </div>
+        <nav class="main-nav">
+          <a href="#calculator" class="nav-link">Calculator</a>
+          <a href="#about" class="nav-link">About</a>
+          <a href="#disclaimer" class="nav-link">Details</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <h1>Know your AWS bill <span class="accent">before</span> it surprises you.</h1>
+        <p class="hero-sub">
+          Estimate your monthly EC2, S3, EBS, RDS and data transfer costs in seconds.
+          No signup. No credit card. Just answers.
+        </p>
+        <div class="hero-actions">
+          <a href="#calculator" class="btn btn-primary">Start Calculating</a>
+          <a href="#about" class="btn btn-ghost">How it works</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><strong>6</strong><span>Services</span></div>
+          <div class="stat"><strong>30+</strong><span>Instance Types</span></div>
+          <div class="stat"><strong>27</strong><span>Regions</span></div>
+          <div class="stat"><strong>Free</strong><span>Forever</span></div>
+        </div>
+      </div>
+    </section>
+
+    <main id="calculator" class="container">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Cost Calculator</h2>
+          <p>Select your services and see your estimated monthly spend.</p>
+        </div>
+
+        <div class="toolbar">
+          <label class="field">
+            <span class="field-label">Region</span>
+            <select id="region"></select>
+          </label>
+          <label class="field">
+            <span class="field-label">Currency</span>
+            <select id="currency">
+              <option value="USD">USD ($)</option>
+              <option value="MYR">MYR (RM)</option>
+            </select>
+          </label>
+          <div class="toolbar-actions">
+            <button id="share-btn" class="btn btn-sm btn-ghost" disabled>Copy Share Link</button>
+            <button id="reset-btn" class="btn btn-sm btn-ghost">Reset</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="compute">Compute</button>
+          <button class="tab" data-tab="storage">Storage</button>
+          <button class="tab" data-tab="database">Database</button>
+          <button class="tab" data-tab="transfer">Transfer</button>
+          <button class="tab" data-tab="summary">Summary</button>
+        </div>
+
+        <!-- Compute -->
+        <div class="tab-panel active" id="compute">
+          <div id="compute-items"></div>
+          <button id="add-ec2" class="btn btn-outline">+ Add EC2 Instance</button>
+        </div>
+
+        <!-- Storage -->
+        <div class="tab-panel" id="storage">
+          <h3 class="subheading">S3 Storage</h3>
+          <div id="s3-items"></div>
+          <button id="add-s3" class="btn btn-outline">+ Add S3 Bucket</button>
+
+          <h3 class="subheading mt-lg">EBS Volumes</h3>
+          <div id="ebs-items"></div>
+          <button id="add-ebs" class="btn btn-outline">+ Add EBS Volume</button>
+        </div>
+
+        <!-- Database -->
+        <div class="tab-panel" id="database">
+          <div id="rds-items"></div>
+          <button id="add-rds" class="btn btn-outline">+ Add RDS Instance</button>
+        </div>
+
+        <!-- Transfer -->
+        <div class="tab-panel" id="transfer">
+          <div class="transfer-form">
+            <label class="field">
+              <span class="field-label">Data transfer out to internet (GB / month)</span>
+              <input type="number" id="transfer-gb" min="0" step="1" value="0" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="tab-panel" id="summary">
+          <div id="summary-costs"></div>
+          <div id="summary-total"></div>
+          <div id="free-tier-note" class="notice hidden"></div>
+        </div>
+      </section>
+    </main>
+
+    <section id="about" class="container section">
+      <h2>How it works</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">1</div>
+          <h3>Pick services</h3>
+          <p>Add EC2 instances, S3 buckets, EBS volumes and RDS databases that match your workload.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">2</div>
+          <h3>Choose sizing</h3>
+          <p>Select instance types, storage classes and regions. We auto-fill on-demand pricing.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">3</div>
+          <h3>See your estimate</h3>
+          <p>Get an instant daily, monthly and yearly cost estimate — broken down per service.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="disclaimer" class="container section">
+      <div class="notice-box">
+        <h3>About these estimates</h3>
+        <p>
+          All prices are on-demand list prices in USD, based on published AWS pricing at build time.
+          Actual costs vary by usage, Savings Plans, Reserved Instances, Free Tier eligibility and
+          data transfer patterns. Always confirm final pricing on the
+          <a href="https://aws.amazon.com/pricing/" target="_blank" rel="noopener">AWS Pricing page</a>.
+        </p>
+        <p>
+          Data transfer pricing reflects aggregate-free-tier rates. Free Tier is applied only where
+          usage falls within the free allowances.
+        </p>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <span>AWS Cost Calculator — a side project.</span>
+        <span>Not affiliated with Amazon Web Services.</span>
+        <nav class="footer-nav">
+          <a href="#calculator">Calculator</a>
+          <a href="#about">About</a>
+          <a href="#disclaimer">Details</a>
+        </nav>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

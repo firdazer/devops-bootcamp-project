@@ -69,3 +69,8 @@ module "node3" {
   tags                   = { Name = "monitoring-server" }
   root_block_device      = { size = 16 }
 }
+
+output "node1_public_ip" {
+  description = "Public IP of the webserver (node1)"
+  value       = aws_eip.node1_eip.public_ip
+}
