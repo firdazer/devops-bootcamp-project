@@ -9,6 +9,30 @@
   <meta property="og:title" content="AWS Cost Calculator" />
   <meta property="og:description" content="Estimate your AWS monthly costs instantly." />
   <meta property="og:type" content="website" />
+
+  <!-- ── Google Analytics 4 ─────────────────────────────────────────
+       Replace G-XXXXXXXXXX with your Measurement ID
+       (Admin → Data Streams → your stream → Web stream details). -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+
+  <!-- ── Google AdSense ──────────────────────────────────────────────
+       Replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID.
+       Keep these scripts OUT of the <head> REQUIREMENT: loading the
+       AdSense script is optional until approved; the ad <ins> blocks
+       below render nothing until it loads. -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+          crossorigin="anonymous"></script>
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
 </head>
 <body>
   <div id="app">
@@ -47,6 +71,15 @@
     </section>
 
     <main id="calculator" class="container">
+      <!-- ── AdSense: Leaderboard (728x90) — post-hero ────────────── -->
+      <div class="ad-slot ad-slot-leader">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="REPLACE_WITH_AD_SLOT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+      </div>
       <section class="panel">
         <div class="panel-head">
           <h2>Cost Calculator</h2>
@@ -121,6 +154,18 @@
       </section>
     </main>
 
+    <!-- ── AdSense: Responsive rectangle — pre-about ──────────────── -->
+    <div class="container">
+      <div class="ad-slot ad-slot-rect">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="REPLACE_WITH_AD_SLOT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+      </div>
+    </div>
+
     <section id="about" class="container section">
       <h2>How it works</h2>
       <div class="cards">
@@ -157,6 +202,18 @@
         </p>
       </div>
     </section>
+
+    <!-- ── AdSense: Leaderboard (728x90) — pre-footer ─────────────── -->
+    <div class="container">
+      <div class="ad-slot ad-slot-leader">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="REPLACE_WITH_AD_SLOT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+      </div>
+    </div>
 
     <footer class="site-footer">
       <div class="container footer-inner">
